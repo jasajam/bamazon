@@ -51,11 +51,11 @@ function isShopping() {
           message: "Would you like to buy something?",
       }).then(function(answer) {
         if (answer.shoppingNow) {
-            console.log("Great! Let's shop.");
+            console.log("\n" + "Great! Let's shop.");
             shoppingRounds++;
             shopping();
-        } else {
-            console.log("Ok, we'll be here if you change your mind");
+        } else {+
+            console.log("\n" + "Ok, we'll be here if you change your mind :)");
             connection.end();
         }
       })
@@ -67,11 +67,11 @@ function isShopping() {
             message: "Would you like to keep shopping?",
         }).then(function(answer) {
             if (answer.shoppingAgain) {
-                console.log("Great! Let's shop.");
+                console.log("\n" + "Great! Let's shop.");
                 shoppingRounds++;
                 shopping();
             } else {
-                console.log("Ok, we'll be here if you change your mind");
+                console.log("\n" + "Ok, we'll be here if you change your mind :)");
                 connection.end();
             }
         })   
@@ -80,22 +80,80 @@ function isShopping() {
 
 // function to actually start shopping - choose your product 
 function shopping() {
-    console.log("Which item would you like to buy?");
+
+    var shoppingQuestions = [{
+        name: "desiredProduct",
+        type: "number",
+        message: "Enter the id number of the product you'd like to buy."
+     },
+     {
+         name: "desiredQty",
+         type: "number",
+         message: "How many units of the item would you like to buy?"
+     }];
+
+        // from test that my shopping function was getting called
+    // console.log("Which item would you like to buy?");
+    inquirer
+     .prompt(shoppingQuestions).then(function(answer) {
+         console.log("\n" + "Thanks, confirming your order now." + "\n");
+        //  console.log("desired prod id", answer.desiredProduct);
+        confirmOrder(answer.desiredProduct, answer.desiredQty);
+     })
 }
 
-// run node bamazonCustomer.js
+// determine if there's enough product to meet customer's desires
+    // if not, say sorry and invite them to shop more
+    // if there is, call function to update table/make sale, show them "a receipt", and invite them to shop more
+function confirmOrder(desiredProdID, desiredProdQty) {
+    var query = "SELECT product_name, price, stock_quantity FROM products WHERE item_id=" + desiredProdID;
+    // console.log("this is productID: ", query);
+    
+    connection.query(query, function(err, res) {
+
+        if (err) throw err;
+        // console.log("available: ", res[0].stock_quantity);
+        // console.log("desired: ", desiredProdQty);
+        if (res[0].stock_quantity < desiredProdQty) {
+            console.log("\n" + 'Sorry, we have insufficient stock for this purchase.' + "\n");
+            isShopping();
+        } else {
+            completeSale(res[0].stock_quantity, desiredProdQty, desiredProdID);
+            console.log("\n" + "Thank you for shopping with Bamazon!" + "\n");
+            console.table("Order Summary", [{product_name: res[0].product_name, quantity_purchased: desiredProdQty, total_cost: desiredProdQty * res[0].price}]);
+            isShopping();
+        } 
+    });
+}
+
+// function for selling the item to the customer called above - 
+    // updates database to reflect new stock quantity per customer's purchase
+function completeSale(stock, desiredProdQty, desiredProdID) {
+    var remainingProd = stock - desiredProdQty;
+    var sqlUpdate = "UPDATE products SET stock_quantity=" + remainingProd + " WHERE item_id=" + desiredProdID;
+    // console.log(sqlUpdate);
+
+    connection.query(sqlUpdate, function(err, res) {
+        if (err) throw err;
+
+        // console.log(res.affectedRows + "record updated!");
+    })
+}
+
+
+// XX run node bamazonCustomer.js
     // --> you see ids, names, and prices of all available products
     // SELECT above from products
 
 
 
-// via inquirer you get asked what id you want to buy
-// ask how many units you want to buy 
+//XX  via inquirer you get asked what id you want to buy
+// XX ask how many units you want to buy 
 // check if stock >= # units customer wants
-    // if no, message: "Sorry, we have insufficent stock for this purchase"
+    // XX if no, message: "Sorry, we have insufficent stock for this purchase"
         // prevent order 
         // and ask again? (or ask, want to buy something less or buy something else? )
-    // if enough
+    // XX if enough
         // fulfill order - subtract customer desired qty from stock
             // update database
         // message to customer:
